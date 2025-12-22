@@ -41,6 +41,7 @@ app.use('/:recurso', (req, res, next) => {
     }
     next();
 });
+
 // --- ROTAS DA API (CRUD) ---
 
 // 1. LISTAR (GET) - Retorna todos os itens da categoria
