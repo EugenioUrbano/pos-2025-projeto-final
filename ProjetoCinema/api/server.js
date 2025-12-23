@@ -5,87 +5,119 @@ const bodyParser = require('body-parser');
 const app = express();
 const PORT = 3001;
 
-// Configurações para permitir que o Front-end acesse este servidor
 app.use(cors());
 app.use(bodyParser.json());
 
-// --- BANCO DE DADOS (Simulado na Memória) ---
-// Aqui definimos as "tabelas" do nosso sistema de Cinema
 const db = {
-    filmes: [
-        { id: 1, titulo: "Interestelar", diretor: "Christopher Nolan", ano: 2014, nota: 9.5 },
-        { id: 2, titulo: "O Poderoso Chefão", diretor: "Coppola", ano: 1972, nota: 10 }
+    users: [
+        { id: 1, name: "Ana Souza", username: "ana_dev", email: "ana.souza@tech.com" },
+        { id: 2, name: "Carlos Oliveira", username: "carlos_manager", email: "carlos.adm@empresa.com" },
+        { id: 3, name: "Beatriz Lima", username: "bia_design", email: "bia.lima@studio.com" }
     ],
-    series: [
-        { id: 1, titulo: "Breaking Bad", temporadas: 5, plataforma: "Netflix" },
-        { id: 2, titulo: "The Boys", temporadas: 4, plataforma: "Prime Video" }
+    posts: [
+        { userId: 1, id: 1, title: "Como começar com React em 2025", body: "O React continua sendo a biblioteca mais popular. Para iniciantes, recomendo focar fortemente no entendimento de Hooks (useState, useEffect) antes de pular para frameworks complexos como Next.js." },
+        { userId: 2, id: 2, title: "Estratégias de Liderança Técnica", body: "Liderar um time de desenvolvimento exige mais do que conhecimento técnico. É necessário empatia, capacidade de delegar tarefas e uma visão clara sobre a arquitetura do software a longo prazo." },
+        { userId: 3, id: 3, title: "A importância da UX no Mobile", body: "Em telas pequenas, cada pixel conta. A experiência do usuário deve ser fluida, com botões acessíveis e navegação intuitiva para garantir a retenção do usuário." }
     ],
-    atores: [
-        { id: 1, nome: "Leonardo DiCaprio", idade: 48, nacionalidade: "EUA" }
+    comments: [
+        { postId: 1, id: 1, name: "Dúvida sobre Hooks", email: "dev.junior@gmail.com", body: "Ótimo artigo! Mas em qual cenário devo usar o useMemo em vez de apenas deixar o componente renderizar?" },
+        { postId: 1, id: 2, name: "Parabéns!", email: "carlos.adm@empresa.com", body: "Muito bom, Ana. Vou compartilhar com a equipe de estagiários." },
+        { postId: 2, id: 3, name: "Discordo em parte", email: "tech.lead@outro.com", body: "Acho que a arquitetura deve ser decisão do time todo, não só do líder." }
     ],
-    reviews: [] // Começa vazio
+    albums: [
+        { userId: 1, id: 1, title: "Viagem ao Japão" },
+        { userId: 3, id: 2, title: "Portfolio de Design 2024" }
+    ],
+    photos: [
+        { albumId: 1, id: 1, title: "Monte Fuji ao amanhecer", url: "https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?w=600&q=80", thumbnailUrl: "https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?w=150&q=80" },
+        { albumId: 1, id: 2, title: "Ruas de Tóquio à noite", url: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=600&q=80", thumbnailUrl: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=150&q=80" },
+        { albumId: 2, id: 3, title: "Protótipo App Bancário", url: "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?w=600&q=80", thumbnailUrl: "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?w=150&q=80" }
+    ],
+    todos: [
+        { userId: 1, id: 1, title: "Revisar Pull Requests do time", completed: false },
+        { userId: 1, id: 2, title: "Atualizar documentação da API", completed: true },
+        { userId: 2, id: 3, title: "Reunião de alinhamento mensal", completed: true },
+        { userId: 3, id: 4, title: "Entregar wireframes do novo site", completed: false }
+    ]
 };
 
-// Função auxiliar para criar IDs novos automaticamente (1, 2, 3...)
-const getNextId = (recurso) => {
-    const lista = db[recurso];
-    if (lista.length === 0) return 1;
-    return Math.max(...lista.map(item => item.id)) + 1;
+const getNextId = (resource) => {
+    const list = db[resource];
+    if (!list || list.length === 0) return 1;
+    return Math.max(...list.map(item => item.id)) + 1;
 };
 
-// Middleware: Verifica se o recurso (ex: 'filmes') existe antes de tentar acessar
-app.use('/:recurso', (req, res, next) => {
-    const { recurso } = req.params;
-    if (!db[recurso]) {
-        return res.status(404).json({ erro: "Categoria não encontrada (Tente: filmes, series, atores)" });
+app.get('/:parent/:parentId/:child', (req, res) => {
+    const { parent, parentId, child } = req.params;
+    
+    if (!db[child] || !db[parent]) return res.status(404).json({});
+
+    const foreignKey = parent.slice(0, -1) + 'Id'; 
+    const filteredData = db[child].filter(item => item[foreignKey] == parentId);
+    
+    res.json(filteredData);
+});
+
+app.get('/:resource', (req, res) => {
+    const { resource } = req.params;
+    const filters = req.query;
+
+    if (!db[resource]) return res.status(404).json({});
+
+    let data = db[resource];
+
+    if (Object.keys(filters).length > 0) {
+        data = data.filter(item => {
+            let isValid = true;
+            for (key in filters) {
+                if (item[key] != filters[key]) isValid = false;
+            }
+            return isValid;
+        });
     }
-    next();
+
+    res.json(data);
 });
 
-// --- ROTAS DA API (CRUD) ---
-
-// 1. LISTAR (GET) - Retorna todos os itens da categoria
-app.get('/:recurso', (req, res) => {
-    const { recurso } = req.params;
-    res.json(db[recurso]);
-});
-
-// 2. BUSCAR UM (GET ID) - Retorna apenas um item pelo ID
-app.get('/:recurso/:id', (req, res) => {
-    const { recurso, id } = req.params;
-    const item = db[recurso].find(i => i.id == id);
-    if (!item) return res.status(404).json({ erro: "Item não encontrado" });
+app.get('/:resource/:id', (req, res) => {
+    const item = db[req.params.resource].find(i => i.id == req.params.id);
+    if (!item) return res.status(404).json({});
     res.json(item);
 });
 
-// 3. CRIAR (POST) - Adiciona um novo item
-app.post('/:recurso', (req, res) => {
-    const { recurso } = req.params;
-    const novoItem = { id: getNextId(recurso), ...req.body };
-    db[recurso].push(novoItem);
-    res.status(201).json(novoItem);
+app.post('/:resource', (req, res) => {
+    const defaults = { userId: 1, postId: 1, albumId: 1 };
+    const newItem = { 
+        ...defaults,
+        ...req.body, 
+        id: getNextId(req.params.resource) 
+    };
+    db[req.params.resource].push(newItem);
+    res.status(201).json(newItem);
 });
 
-// 4. ATUALIZAR (PUT) - Modifica um item existente
-app.put('/:recurso/:id', (req, res) => {
-    const { recurso, id } = req.params;
-    const index = db[recurso].findIndex(i => i.id == id);
-
-    if (index === -1) return res.status(404).json({ erro: "Item não encontrado" });
-
-    // Atualiza mantendo o ID original
-    db[recurso][index] = { ...db[recurso][index], ...req.body, id: Number(id) };
-    res.json(db[recurso][index]);
+app.put('/:resource/:id', (req, res) => {
+    const { resource, id } = req.params;
+    const index = db[resource].findIndex(i => i.id == id);
+    if (index === -1) return res.status(404).json({});
+    
+    db[resource][index] = { ...req.body, id: Number(id) };
+    res.json(db[resource][index]);
 });
 
-// 5. DELETAR (DELETE) - Apaga um item
-app.delete('/:recurso/:id', (req, res) => {
-    const { recurso, id } = req.params;
-    db[recurso] = db[recurso].filter(i => i.id != id);
-    res.json({ sucesso: true });
+app.patch('/:resource/:id', (req, res) => {
+    const { resource, id } = req.params;
+    const index = db[resource].findIndex(i => i.id == id);
+    if (index === -1) return res.status(404).json({});
+
+    db[resource][index] = { ...db[resource][index], ...req.body };
+    res.json(db[resource][index]);
 });
 
-app.listen(PORT, () => {
-    console.log(`🎬 API de Cinema rodando em http://localhost:${PORT}`);
-    console.log(`Categorias disponíveis: ${Object.keys(db).join(', ')}`);
+app.delete('/:resource/:id', (req, res) => {
+    const { resource, id } = req.params;
+    db[resource] = db[resource].filter(i => i.id != id);
+    res.json({ success: true });
 });
+
+app.listen(PORT, () => console.log(`API rodando na porta ${PORT}`));
