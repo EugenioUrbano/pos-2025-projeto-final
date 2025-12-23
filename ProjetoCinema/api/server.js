@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -121,3 +122,5 @@ app.delete('/:resource/:id', (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`API rodando na porta ${PORT}`));
+=======
+>>>>>>> 8a0940301499c81b135af8d2dd0f318d1c1f0566
